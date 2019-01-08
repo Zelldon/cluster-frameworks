@@ -1,5 +1,6 @@
 package de.zell;
 
+import java.util.Random;
 import java.util.Set;
 
 import io.atomix.cluster.Member;
@@ -17,12 +18,17 @@ public class App {
   }
 
   private static class AtomixNode implements Runnable {
+    private final Random random = new Random();
+    private final int TIME = 1000;
+
     private final String memberId;
     private final int port;
+    private final int timeToLive;
 
     public AtomixNode(String memberId, int port) {
       this.memberId = memberId;
       this.port = port;
+      timeToLive = random.nextInt() % 10_000;
     }
 
     @Override
@@ -60,13 +66,18 @@ public class App {
                         + clusterMembershipEvent.toString());
               });
 
-      while (true) {
+      int currentLifeTime = 0;
+      while (currentLifeTime < timeToLive)
+      {
         try {
-          Thread.sleep(1000);
+          Thread.sleep(TIME);
+          currentLifeTime += TIME;
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
       }
+
+      node.stop().join();
     }
   }
 }

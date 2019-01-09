@@ -2,8 +2,10 @@ package de.zell;
 
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import io.atomix.cluster.Member;
+import io.atomix.cluster.messaging.ClusterCommunicationService;
 import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
 import io.atomix.core.profile.Profile;
@@ -36,7 +38,37 @@ public class App {
 
     @Override
     public void run() {
+      final Atomix node = setupNode();
+      printMembers(node);
+      addMembershipListener(node);
 
+      final ClusterCommunicationService communicationService = node.getCommunicationService();
+      communicationService
+          .subscribe("broadcast", (msg) ->
+      {
+        System.out.println("Node: " + memberId + " got message: " + msg);
+        return CompletableFuture.completedFuture(msg);
+      });
+
+      int currentLifeTime = 0;
+      while (currentLifeTime < timeToLive)
+      {
+        try {
+          Thread.sleep(TIME);
+          // broadcast
+          communicationService
+              .broadcast("broadcast", "This is the message");
+          currentLifeTime += TIME;
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      node.stop().join();
+    }
+
+    private Atomix setupNode()
+    {
       final AtomixBuilder atomixBuilder = Atomix.builder();
 
       final Atomix node =
@@ -50,6 +82,11 @@ public class App {
       System.out.println("Start node: " + memberId);
 
       node.start().join();
+      return node;
+    }
+
+    private void printMembers(Atomix node)
+    {
       final Set<Member> members = node.getMembershipService().getMembers();
 
       final StringBuilder builder =
@@ -58,7 +95,10 @@ public class App {
         builder.append("\n").append(m.id()).append(" member: ").append(m.toString());
       }
       System.out.println(builder.toString());
+    }
 
+    private void addMembershipListener(Atomix node)
+    {
       node.getMembershipService()
           .addListener(
               clusterMembershipEvent -> {
@@ -68,19 +108,6 @@ public class App {
                         + " received cluster membership event"
                         + clusterMembershipEvent.toString());
               });
-
-      int currentLifeTime = 0;
-      while (currentLifeTime < timeToLive)
-      {
-        try {
-          Thread.sleep(TIME);
-          currentLifeTime += TIME;
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      node.stop().join();
     }
   }
 }

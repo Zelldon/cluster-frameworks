@@ -11,10 +11,13 @@ import io.atomix.core.profile.Profile;
 /** Hello world! */
 public class App {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     new Thread(new AtomixNode("member1", 26500)).start();
     new Thread(new AtomixNode("member2", 26501)).start();
     new Thread(new AtomixNode("member3", 26502)).start();
+
+    Thread.sleep(5_000);
+    new Thread(new AtomixNode("laterJoinedMember", 26503)).start();
   }
 
   private static class AtomixNode implements Runnable {
@@ -28,7 +31,7 @@ public class App {
     public AtomixNode(String memberId, int port) {
       this.memberId = memberId;
       this.port = port;
-      timeToLive = random.nextInt() % 10_000;
+      timeToLive = random.nextInt() % 10_000 + 5_000;
     }
 
     @Override
@@ -38,7 +41,7 @@ public class App {
 
       final Atomix node =
           atomixBuilder
-              .withClusterId(memberId)
+              .withMemberId(memberId)
               .withAddress(port)
               .withMulticastEnabled()
               .addProfile(Profile.dataGrid())

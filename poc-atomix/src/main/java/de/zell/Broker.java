@@ -9,6 +9,8 @@ import io.atomix.cluster.ClusterMembershipEvent;
 import io.atomix.cluster.Member;
 import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
+import io.atomix.core.log.DistributedLog;
+import io.atomix.core.log.Record;
 import io.atomix.primitive.Consistency;
 import io.atomix.primitive.Replication;
 import io.atomix.primitive.log.LogRecord;
@@ -24,10 +26,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Broker extends Thread {
+  private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
 
   public static final File ROOT_DIR = new File("/home/zell/atomix");
 
-  private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
   public static final String CREATE_COMMAND = "CREATE";
   public static final String CREATED_EVENT = "CREATED";
 
@@ -99,6 +101,13 @@ public class Broker extends Thread {
             // must have - to coordinate leader election
             .withManagementGroup(systemPartitionGroup)
             .addPartitionGroup(logGroup)
+            //            .addPartitionGroup(
+            //                RaftPartitionGroup.builder("raft")
+            //                    .withNumPartitions(3)
+            //                    .withMembers(allMemberList)
+            //                    .withDataDirectory(logGroupFolder)
+            //                    .withFlushOnCommit()
+            //                    .build())
             .build();
 
     node.start().join();
@@ -117,16 +126,31 @@ public class Broker extends Thread {
     }
 
     final DistributedLogProtocol logProtocol =
-        DistributedLogProtocol.builder("logGroup")
+        DistributedLogProtocol.builder(logPartitionGroupName)
             .withConsistency(Consistency.SEQUENTIAL)
             .withReplication(Replication.ASYNCHRONOUS)
             .build();
 
-    logSession = logProtocol.newClient(partitionService).getPartition("foo");
-    logSession.consumer().consume(this::consumeRecord);
+
+    final DistributedLog<String> distributedLog =
+        node.<String>logBuilder().withProtocol(logProtocol).build();
+
+    distributedLog.consume(this::consumeRecord);
+
+    //
+    //    final DistributedLogProtocol logProtocol =
+    //        DistributedLogProtocol.builder("logGroup")
+    //            .withConsistency(Consistency.SEQUENTIAL)
+    //            .withReplication(Replication.ASYNCHRONOUS)
+    //            .build();
+    //
+    //    logProtocol
+    //        .newClient(partitionService)
+    //        .getPartitions()
+    //        .forEach(session -> session.consumer().consume(this::consumeRecord));
   }
 
-  private void consumeRecord(LogRecord record) {
+  private void consumeRecord(Record<String> record) {
     if (record == null) {
       LOG.warn("Record is null!");
       return;
@@ -136,7 +160,21 @@ public class Broker extends Thread {
 
     final String value = new String(record.value());
     if (value.equalsIgnoreCase(CREATE_COMMAND)) {
-      logSession.producer().append(CREATED_EVENT.getBytes());
+      //      logSession.producer().append(CREATED_EVENT.getBytes());
+    }
+  }
+
+  private void consumeLogRecord(LogRecord record) {
+    if (record == null) {
+      LOG.warn("Record is null!");
+      return;
+    }
+
+    LOG.info("Consume record {}", record.toString());
+
+    final String value = new String(record.value());
+    if (value.equalsIgnoreCase(CREATE_COMMAND)) {
+      //      logSession.producer().append(CREATED_EVENT.getBytes());
     }
   }
 

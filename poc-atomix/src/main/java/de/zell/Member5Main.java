@@ -10,6 +10,6 @@ public class Member5Main {
     final List<String> members =
         Arrays.asList(new String[] {"member1", "member2", "member3", "member4", "member5"});
 
-    new Broker(ROOT_DIR, members.get(4), 26504, members).start();
+    new Primitive(ROOT_DIR, members.get(4), 26504, members).start();
   }
 }

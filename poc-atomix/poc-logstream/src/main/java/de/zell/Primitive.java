@@ -1,5 +1,9 @@
 package de.zell;
 
+import de.zell.logstream.DistributedLogstream;
+import de.zell.logstream.DistributedLogstreamBuilder;
+import de.zell.logstream.DistributedLogstreamConfig;
+import de.zell.logstream.DistributedLogstreamType;
 import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
 import io.atomix.primitive.log.LogSession;
@@ -11,6 +15,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +103,14 @@ public class Primitive extends Thread {
         MultiRaftProtocol.builder().withReadConsistency(ReadConsistency.LINEARIZABLE).build();
 
 
-    // TODO build custom primitive
+    // build custom primitive
+
+    final DistributedLogstream logstream = node.<DistributedLogstreamBuilder,
+        DistributedLogstreamConfig,
+        DistributedLogstream>primitiveBuilder("logstream", DistributedLogstreamType.instance())
+        .withProtocol(multiRaftProtocol)
+        .build();
+
+    logstream.append(new UnsafeBuffer("foobar".getBytes()));
   }
 }

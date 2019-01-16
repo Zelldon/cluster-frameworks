@@ -1,5 +1,10 @@
 package de.zell;
 
+import java.io.File;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import de.zell.logstream.DistributedLogstream;
 import de.zell.logstream.DistributedLogstreamBuilder;
 import de.zell.logstream.DistributedLogstreamConfig;
@@ -11,11 +16,6 @@ import io.atomix.protocols.raft.MultiRaftProtocol;
 import io.atomix.protocols.raft.ReadConsistency;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.utils.net.Address;
-import java.io.File;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,12 +71,12 @@ public class Primitive extends Thread {
 
     /// PARTITION GROUP
 
-    final String partitionGroupName = "partitionGroup";
+    final String partitionGroupName = "raft";
     final File partitionGroupFolder = new File(memberFolder, partitionGroupName);
     partitionGroupFolder.mkdir();
 
     final RaftPartitionGroup raftPartitionGroup =
-        RaftPartitionGroup.builder("raft")
+        RaftPartitionGroup.builder(partitionGroupName)
             .withNumPartitions(3)
             .withPartitionSize(3)
             .withMembers(allMemberList)
@@ -99,17 +99,20 @@ public class Primitive extends Thread {
     node.start().join();
     LOG.info("Member {} started.", memberId);
 
-    final MultiRaftProtocol multiRaftProtocol =
-        MultiRaftProtocol.builder().withReadConsistency(ReadConsistency.LINEARIZABLE).build();
+    if (memberId.equalsIgnoreCase("member1")) {
+      final MultiRaftProtocol multiRaftProtocol =
+          MultiRaftProtocol.builder(partitionGroupName)
+              .withReadConsistency(ReadConsistency.LINEARIZABLE)
+              .build();
 
+      LOG.info("Build logstream primitive.");
+      // build custom primitive
+      node.<DistributedLogstreamBuilder, DistributedLogstreamConfig, DistributedLogstream>
+              primitiveBuilder("logstream", DistributedLogstreamType.instance())
+          .withProtocol(multiRaftProtocol)
+          .build();
 
-    // build custom primitive
-    final DistributedLogstream logstream = node.<DistributedLogstreamBuilder,
-        DistributedLogstreamConfig,
-        DistributedLogstream>primitiveBuilder("logstream", DistributedLogstreamType.instance())
-        .withProtocol(multiRaftProtocol)
-        .build();
-
-    logstream.append(new UnsafeBuffer("foobar".getBytes()));
+      LOG.info("Logstream primitive build.");
+    }
   }
 }

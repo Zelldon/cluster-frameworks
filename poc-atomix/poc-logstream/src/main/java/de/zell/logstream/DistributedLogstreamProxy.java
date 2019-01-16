@@ -6,8 +6,8 @@ import java.util.concurrent.CompletableFuture;
 
 import io.atomix.primitive.AbstractAsyncPrimitive;
 import io.atomix.primitive.PrimitiveRegistry;
+import io.atomix.primitive.PrimitiveState;
 import io.atomix.primitive.proxy.ProxyClient;
-import org.agrona.DirectBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,10 +27,16 @@ public class DistributedLogstreamProxy
   }
 
   @Override
-  public CompletableFuture<Long> append(DirectBuffer bytes) {
-    appendFuture = new CompletableFuture<>();
+  public CompletableFuture<Long> append(byte[] bytes) {
 
-    LOG.debug("Get proxy and try to append bytes: {}.", Arrays.toString(bytes.byteArray()));
+    PrimitiveState state = getProxyClient().getPartition(name()).getState();
+    if (state != PrimitiveState.CONNECTED) {
+      LOG.error("Proxy client is currently not connected.");
+      return CompletableFuture.completedFuture(-1L);
+    }
+
+    appendFuture = new CompletableFuture<>();
+    LOG.info("Get proxy and try to append bytes: {}.", Arrays.toString(bytes));
     // TODO need to copy given bytes
 
     getProxyClient()
@@ -39,16 +45,12 @@ public class DistributedLogstreamProxy
             (result, error) -> {
               if (error != null) {
                 appendFuture.completeExceptionally(error);
-                LOG.debug("Append completed with an error.", error);
+                LOG.info("Append completed with an error.", error);
+              } else {
+                LOG.info("Append was successful.");
               }
-              else
-              {
-                LOG.debug("Append was successful.");
-              }
-
             });
-    return appendFuture.thenApply(result -> result)
-                       .whenComplete((r, e) -> appendFuture = null);
+    return appendFuture.thenApply(result -> result).whenComplete((r, e) -> appendFuture = null);
   }
 
   @Override
@@ -78,4 +80,10 @@ public class DistributedLogstreamProxy
   //      }
   //    }
 
+  @Override
+  public CompletableFuture<AsyncDistributedLogstream> connect() {
+    return super.connect()
+        .thenCompose(v -> getProxyClient().getPartition(name()).connect())
+        .thenApply(v -> (AsyncDistributedLogstream) this);
+  }
 }

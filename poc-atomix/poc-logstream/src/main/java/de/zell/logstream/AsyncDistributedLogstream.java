@@ -1,11 +1,11 @@
 package de.zell.logstream;
 
-import io.atomix.primitive.AsyncPrimitive;
 import java.util.concurrent.CompletableFuture;
-import org.agrona.DirectBuffer;
+
+import io.atomix.primitive.AsyncPrimitive;
 
 public interface AsyncDistributedLogstream extends AsyncPrimitive {
-  CompletableFuture<Long> append(DirectBuffer bytes);
+  CompletableFuture<Long> append(byte[] bytes);
 
   @Override
   DistributedLogstream sync();

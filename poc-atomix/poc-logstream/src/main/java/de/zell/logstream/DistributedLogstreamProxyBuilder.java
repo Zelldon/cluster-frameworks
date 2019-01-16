@@ -1,14 +1,18 @@
 package de.zell.logstream;
 
+import java.util.concurrent.CompletableFuture;
+
 import io.atomix.primitive.PrimitiveManagementService;
 import io.atomix.primitive.protocol.PrimitiveProtocol;
 import io.atomix.primitive.protocol.ProxyProtocol;
 import io.atomix.primitive.service.ServiceConfig;
-import java.util.concurrent.CompletableFuture;
 
 public class DistributedLogstreamProxyBuilder extends DistributedLogstreamBuilder {
 
-  public DistributedLogstreamProxyBuilder(String name, DistributedLogstreamConfig config, PrimitiveManagementService managementService) {
+  public DistributedLogstreamProxyBuilder(
+      String name,
+      DistributedLogstreamConfig config,
+      PrimitiveManagementService managementService) {
     super(name, config, managementService);
   }
 
@@ -16,7 +20,10 @@ public class DistributedLogstreamProxyBuilder extends DistributedLogstreamBuilde
   @SuppressWarnings("unchecked")
   public CompletableFuture<DistributedLogstream> buildAsync() {
     return newProxy(DistributedLogstreamService.class, new ServiceConfig())
-        .thenCompose(proxy -> new DistributedLogstreamProxy(proxy, managementService.getPrimitiveRegistry()).connect())
+        .thenCompose(
+            proxyClient ->
+                new DistributedLogstreamProxy(proxyClient, managementService.getPrimitiveRegistry())
+                    .connect())
         .thenApply(AsyncDistributedLogstream::sync);
   }
 

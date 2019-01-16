@@ -1,13 +1,13 @@
 package de.zell.logstream;
 
-import io.atomix.primitive.AsyncPrimitive;
-import io.atomix.primitive.Synchronous;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.agrona.DirectBuffer;
 
-public class BlockingLogstream extends Synchronous<AsyncDistributedLogstream> implements DistributedLogstream{
+import io.atomix.primitive.Synchronous;
+
+public class BlockingLogstream extends Synchronous<AsyncDistributedLogstream>
+    implements DistributedLogstream {
 
   private final DistributedLogstreamProxy distributedLogstreamProxy;
   private final long timeout;
@@ -19,7 +19,7 @@ public class BlockingLogstream extends Synchronous<AsyncDistributedLogstream> im
   }
 
   @Override
-  public long append(DirectBuffer bytes) {
+  public long append(byte[] bytes) {
 
     // blocking
     long position = -1;

@@ -1,6 +1,10 @@
 package de.zell;
 
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,8 +25,17 @@ import org.slf4j.LoggerFactory;
 
 public class Primitive extends Thread {
   private static final Logger LOG = LoggerFactory.getLogger(Primitive.class);
+  public static File ROOT_DIR;
+  static {
+    try {
+      final URL url = Primitive.class.getResource("/");
+      final URI uri = url.toURI();
+      ROOT_DIR = Paths.get(uri).toFile();
+    } catch (URISyntaxException e) {
+      e.printStackTrace();
+    }
+  }
 
-  public static final File ROOT_DIR = new File("/home/zell/atomix");
 
   public static final String CREATE_COMMAND = "CREATE";
   public static final String CREATED_EVENT = "CREATED";

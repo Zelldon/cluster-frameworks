@@ -17,7 +17,7 @@ public class DistributedLogstreamProxyBuilder extends DistributedLogstreamBuilde
   public CompletableFuture<DistributedLogstream> buildAsync() {
     return newProxy(DistributedLogstreamService.class, new ServiceConfig())
         .thenCompose(proxy -> new DistributedLogstreamProxy(proxy, managementService.getPrimitiveRegistry()).connect())
-        .thenApply(logstream -> logstream.sync());
+        .thenApply(AsyncDistributedLogstream::sync);
   }
 
   @Override

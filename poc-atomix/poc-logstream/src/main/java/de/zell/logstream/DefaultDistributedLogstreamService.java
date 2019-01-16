@@ -1,21 +1,20 @@
 package de.zell.logstream;
 
+import java.util.Arrays;
+
 import io.atomix.primitive.service.AbstractPrimitiveService;
 import io.atomix.primitive.service.BackupInput;
 import io.atomix.primitive.service.BackupOutput;
-import io.atomix.primitive.service.ServiceConfig;
 import io.atomix.primitive.session.Session;
-import io.atomix.primitive.session.SessionId;
-import java.time.Duration;
-import java.util.ArrayDeque;
-import java.util.Queue;
-import sun.nio.ch.DirectBuffer;
+import org.agrona.DirectBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultDistributedLogstreamService
     extends AbstractPrimitiveService<DistributedLogstreamClient>
     implements DistributedLogstreamService {
-  private Queue<SessionId> queue = new ArrayDeque<>();
-  private SessionId lock;
+
+  private static final Logger LOG = LoggerFactory.getLogger(DistributedLogstreamProxy.class);
 
   public DefaultDistributedLogstreamService() {
     super(DistributedLogstreamType.instance(), DistributedLogstreamClient.class);
@@ -23,6 +22,7 @@ public class DefaultDistributedLogstreamService
 
   @Override
   public void append(DirectBuffer bytes) {
+    LOG.debug("Append given bytes {}", Arrays.toString(bytes.byteArray()));
 
     // to append in log stream impl
     Session<DistributedLogstreamClient> currentSession = getCurrentSession();
@@ -32,8 +32,11 @@ public class DefaultDistributedLogstreamService
   }
 
   @Override
-  public void backup(BackupOutput backupOutput) {}
+  public void backup(BackupOutput backupOutput) {
+    LOG.debug("Do an backup of the current state.");
+  }
 
   @Override
-  public void restore(BackupInput backupInput) {}
+  public void restore(BackupInput backupInput) {
+    LOG.debug("Restore an backup of an previous state.");}
 }

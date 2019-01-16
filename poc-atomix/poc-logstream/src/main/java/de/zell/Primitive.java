@@ -104,7 +104,6 @@ public class Primitive extends Thread {
 
 
     // build custom primitive
-
     final DistributedLogstream logstream = node.<DistributedLogstreamBuilder,
         DistributedLogstreamConfig,
         DistributedLogstream>primitiveBuilder("logstream", DistributedLogstreamType.instance())

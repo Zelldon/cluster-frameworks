@@ -15,19 +15,19 @@ public class DistributedLogstreamType
 
   @Override
   public DistributedLogstreamConfig newConfig() {
-    return null;
+    return new DistributedLogstreamConfig();
   }
 
   @Override
-  public DistributedLogstreamBuilder newBuilder(String s,
+  public DistributedLogstreamBuilder newBuilder(String name,
       DistributedLogstreamConfig distributedLogStreamConfig,
       PrimitiveManagementService primitiveManagementService) {
-    return null;
+    return new DistributedLogstreamProxyBuilder(name, distributedLogStreamConfig, primitiveManagementService);
   }
 
   @Override
   public PrimitiveService newService(ServiceConfig serviceConfig) {
-    return null;
+    return new DefaultDistributedLogstreamService();
   }
 
   @Override

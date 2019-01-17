@@ -72,6 +72,7 @@ public class DefaultDistributedLogstreamService
 
       // to append in log stream impl
       Session<DistributedLogstreamClient> currentSession = getCurrentSession();
+      //      currentSession.publish(PrimitiveEvent.event(EventType.from(""), bytes));
       currentSession.accept(
           distributedLogstreamClient -> distributedLogstreamClient.appended(newPosition));
     } catch (IOException e) {

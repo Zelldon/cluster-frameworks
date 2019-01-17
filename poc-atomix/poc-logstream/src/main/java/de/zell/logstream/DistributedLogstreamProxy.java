@@ -7,6 +7,8 @@ import io.atomix.primitive.AbstractAsyncPrimitive;
 import io.atomix.primitive.PrimitiveRegistry;
 import io.atomix.primitive.PrimitiveState;
 import io.atomix.primitive.proxy.ProxyClient;
+import io.atomix.primitive.proxy.ProxySession;
+import io.atomix.utils.concurrent.Futures;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +84,10 @@ public class DistributedLogstreamProxy
   @Override
   public CompletableFuture<AsyncDistributedLogstream> connect() {
     return super.connect()
-        .thenCompose(v -> getProxyClient().getPartition(name()).connect())
-        .thenApply(v -> (AsyncDistributedLogstream) this);
+        .thenCompose(
+            v ->
+                Futures.allOf(
+                    this.getProxyClient().getPartitions().stream().map(ProxySession::connect)))
+        .thenApply(v -> this);
   }
 }

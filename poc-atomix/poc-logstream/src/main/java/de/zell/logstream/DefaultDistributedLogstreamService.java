@@ -37,12 +37,18 @@ public class DefaultDistributedLogstreamService
   protected void configure(ServiceExecutor executor) {
     super.configure(executor);
 
-    String id = this.getLocalMemberId().id();
-    LOG.info("Current session member id {}", id);
-    final File directory = new File(ROOT_DIR, id);
+    final String nodeId = this.getLocalMemberId().id();
+    LOG.info("Current session member id {}", nodeId);
+    final String serviceName = this.getServiceName();
+    LOG.info("Service name: {}", serviceName);
+    final Long serviceId = this.getServiceId().id();
+    LOG.info("Service id: {}", serviceId);
+
+    final File directory = new File(ROOT_DIR, nodeId);
     directory.mkdirs();
 
-    logstreamFile = new File(directory, "logstream");
+    final String fileName = new StringBuilder(serviceName).append("-").append(serviceId).toString();
+    logstreamFile = new File(directory, fileName);
     try {
       logstreamFile.createNewFile();
 

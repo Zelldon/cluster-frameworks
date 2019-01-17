@@ -55,7 +55,7 @@ public class DefaultDistributedLogstreamService
   @Override
   public void append(byte[] bytes) {
     LOG.info("#append(byte[]): current index {}", this.getCurrentIndex());
-    LOG.info("Append given bytes {}", Arrays.toString(bytes));
+    LOG.debug("Append given bytes.");
     try {
       bufferedWriter.write(Arrays.toString(bytes), 0, bytes.length);
       position += bytes.length;
@@ -75,6 +75,7 @@ public class DefaultDistributedLogstreamService
     LOG.info("#backup(BackupOutput): current index {}", this.getCurrentIndex());
     LOG.debug("Do an backup of the current position {}.", position);
     backupOutput.writeInt(position);
+    backupOutput.writeObject("FINDME");
   }
 
   @Override
@@ -82,6 +83,7 @@ public class DefaultDistributedLogstreamService
     LOG.info("#restore(BackupInput): current index {}", this.getCurrentIndex());
     LOG.debug("Restore an backup of an previous state.");
     position = backupInput.readInt();
+    backupInput.readObject();
     LOG.debug("Restored position: {}", position);
 
     // position could consist of [file id (int32) | file offset (int32)]

@@ -53,7 +53,7 @@ public class Client extends Thread {
     LOG.info("Logstream primitive build.");
 
     final int entries = 1024 * 256;
-    final int entryLength = 128;
+    final int entryLength = 128 * 1024;
     for (int i = 0; i < entries; i++) {
       final StringBuilder entryBuilder = new StringBuilder("entry-").append(i);
       int remainingLength = entryLength - entryBuilder.length();

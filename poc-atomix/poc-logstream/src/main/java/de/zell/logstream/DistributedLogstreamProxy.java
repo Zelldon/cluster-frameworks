@@ -1,7 +1,6 @@
 package de.zell.logstream;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 
 import io.atomix.primitive.AbstractAsyncPrimitive;
@@ -36,7 +35,7 @@ public class DistributedLogstreamProxy
     }
 
     appendFuture = new CompletableFuture<>();
-    LOG.info("Get proxy and try to append bytes: {}.", Arrays.toString(bytes));
+    LOG.debug("Get proxy and try to append bytes.");
     // TODO need to copy given bytes
 
     getProxyClient()
@@ -45,9 +44,9 @@ public class DistributedLogstreamProxy
             (result, error) -> {
               if (error != null) {
                 appendFuture.completeExceptionally(error);
-                LOG.info("Append completed with an error.", error);
+                LOG.error("Append completed with an error.", error);
               } else {
-                LOG.info("Append was successful.");
+                LOG.debug("Append was successful.");
               }
             });
     return appendFuture.thenApply(result -> result).whenComplete((r, e) -> appendFuture = null);
@@ -67,7 +66,7 @@ public class DistributedLogstreamProxy
   public void appended(long position) {
     CompletableFuture<Long> appendFuture = this.appendFuture;
     if (appendFuture != null) {
-      LOG.debug("Bytes were appended at position {}.", position);
+      LOG.info("Bytes were appended at position {}.", position);
       appendFuture.complete(position);
     }
   }

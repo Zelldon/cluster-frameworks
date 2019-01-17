@@ -1,0 +1,113 @@
+package de.zell.engine;
+
+import static de.zell.Broker.ROOT_DIR;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
+import io.atomix.primitive.service.AbstractPrimitiveService;
+import io.atomix.primitive.service.BackupInput;
+import io.atomix.primitive.service.BackupOutput;
+import io.atomix.primitive.service.ServiceExecutor;
+import io.atomix.primitive.session.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class DefaultDistributedEngineService
+    extends AbstractPrimitiveService<DistributedEngineClient> implements DistributedEngineService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultDistributedEngineService.class);
+  private long position;
+  //  private BufferedWriter bufferedWriter;
+  private File EngineFile;
+  private FileChannel fileChannel;
+
+  public DefaultDistributedEngineService() {
+    super(DistributedEngineType.instance(), DistributedEngineClient.class);
+
+    position = 0L;
+  }
+
+  @Override
+  protected void configure(ServiceExecutor executor) {
+    super.configure(executor);
+
+    final String nodeId = this.getLocalMemberId().id();
+    LOG.info("Current session member id {}", nodeId);
+    final String serviceName = this.getServiceName();
+    LOG.info("Service name: {}", serviceName);
+    final Long serviceId = this.getServiceId().id();
+    LOG.info("Service id: {}", serviceId);
+
+    final File directory = new File(ROOT_DIR, nodeId);
+    directory.mkdirs();
+
+    final String fileName = new StringBuilder(serviceName).append("-").append(serviceId).toString();
+    EngineFile = new File(directory, fileName);
+    try {
+      EngineFile.createNewFile();
+
+      RandomAccessFile raf = new RandomAccessFile(EngineFile, "rw");
+      fileChannel = raf.getChannel();
+
+      //      bufferedWriter = Files.newWriter(EngineFile, Charset.defaultCharset());
+    } catch (IOException e) {
+      LOG.error("Error on creating new writer", e);
+      e.printStackTrace();
+    }
+  }
+
+  @Override
+  public void append(byte[] bytes) {
+    LOG.info("#append(byte[]): current index {} position {}", this.getCurrentIndex(), position);
+    LOG.debug("Append given bytes.");
+
+    try {
+      final long newPosition = appendToEngine(bytes);
+
+      // to append in log stream impl
+      Session<DistributedEngineClient> currentSession = getCurrentSession();
+      //      currentSession.publish(PrimitiveEvent.event(EventType.from(""), bytes));
+      currentSession.accept(
+          distributedEngineClient -> distributedEngineClient.appended(newPosition));
+    } catch (IOException e) {
+      LOG.error("Error on append", e);
+      e.printStackTrace();
+    }
+  }
+
+  private long appendToEngine(byte[] bytes) throws IOException {
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+    fileChannel.write(byteBuffer, position);
+    //    bufferedWriter.write(Arrays.toString(bytes), 0, bytes.length);
+    position += bytes.length;
+    //    bufferedWriter.flush();
+    return position;
+  }
+
+  @Override
+  public void backup(BackupOutput backupOutput) {
+    LOG.info("#backup(BackupOutput): current index {}", this.getCurrentIndex());
+    LOG.info("Do an backup of the current position {}.", position);
+    backupOutput.writeLong(position);
+    backupOutput.writeObject("FINDME");
+  }
+
+  @Override
+  public void restore(BackupInput backupInput) {
+    LOG.info("#restore(BackupInput): current index {}", this.getCurrentIndex());
+    LOG.info("Restore an backup of an previous state.");
+    position = backupInput.readLong();
+    backupInput.readObject();
+    LOG.info("Restored position: {}", position);
+
+    // position could consist of [file id (int32) | file offset (int32)]
+    // if we have an offset larger then zero we need to copy the content and rewrite it so we
+    // we can write on the end of the file.
+    //  Files.write(Paths.get("myfile.txt"), "the text".getBytes(), StandardOpenOption.APPEND)
+
+  }
+}

@@ -9,6 +9,7 @@ import io.atomix.core.AtomixBuilder;
 import io.atomix.protocols.raft.MultiRaftProtocol;
 import io.atomix.protocols.raft.ReadConsistency;
 import io.atomix.utils.net.Address;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +51,14 @@ public class Client extends Thread {
             .build();
 
     LOG.info("Logstream primitive build.");
-    logstream.append("foobar".getBytes());
+
+    final int entries = 1024 * 256;
+    final int entryLength = 128;
+    for (int i = 0; i < entries; i++) {
+      final StringBuilder entryBuilder = new StringBuilder("entry-").append(i);
+      int remainingLength = entryLength - entryBuilder.length();
+      entryBuilder.append(RandomStringUtils.random(remainingLength));
+      logstream.append(entryBuilder.toString().getBytes());
+    }
   }
 }

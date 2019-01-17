@@ -1,10 +1,8 @@
 package de.zell;
 
 import java.io.File;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Paths;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -18,6 +16,7 @@ import io.atomix.core.AtomixBuilder;
 import io.atomix.primitive.log.LogSession;
 import io.atomix.protocols.raft.MultiRaftProtocol;
 import io.atomix.protocols.raft.ReadConsistency;
+import io.atomix.protocols.raft.partition.RaftCompactionConfig;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.utils.net.Address;
 import org.slf4j.Logger;
@@ -25,17 +24,25 @@ import org.slf4j.LoggerFactory;
 
 public class Primitive extends Thread {
   private static final Logger LOG = LoggerFactory.getLogger(Primitive.class);
-  public static File ROOT_DIR;
+  public static final File ROOT_DIR = new File("atomix");
+
   static {
+    ROOT_DIR.mkdir();
+
+    final Field freeDiskBuffer;
     try {
-      final URL url = Primitive.class.getResource("/");
-      final URI uri = url.toURI();
-      ROOT_DIR = Paths.get(uri).toFile();
-    } catch (URISyntaxException e) {
-      e.printStackTrace();
+      freeDiskBuffer = RaftCompactionConfig.class.getDeclaredField("DEFAULT_FREE_DISK_BUFFER");
+      freeDiskBuffer.setAccessible(true);
+
+      Field modifiersField = Field.class.getDeclaredField("modifiers");
+      modifiersField.setAccessible(true);
+      modifiersField.setInt(freeDiskBuffer, freeDiskBuffer.getModifiers() & ~Modifier.FINAL);
+
+      freeDiskBuffer.set(null, 0.43);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
-
 
   public static final String CREATE_COMMAND = "CREATE";
   public static final String CREATED_EVENT = "CREATED";

@@ -2,13 +2,12 @@ package de.zell.logstream;
 
 import static de.zell.Primitive.ROOT_DIR;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Arrays;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
-import com.google.common.io.Files;
 import io.atomix.primitive.service.AbstractPrimitiveService;
 import io.atomix.primitive.service.BackupInput;
 import io.atomix.primitive.service.BackupOutput;
@@ -23,14 +22,15 @@ public class DefaultDistributedLogstreamService
 
   private static final Logger LOG =
       LoggerFactory.getLogger(DefaultDistributedLogstreamService.class);
-  private int position;
-  private BufferedWriter bufferedWriter;
+  private long position;
+  //  private BufferedWriter bufferedWriter;
   private File logstreamFile;
+  private FileChannel fileChannel;
 
   public DefaultDistributedLogstreamService() {
     super(DistributedLogstreamType.instance(), DistributedLogstreamClient.class);
 
-    position = 0;
+    position = 0L;
   }
 
   @Override
@@ -45,7 +45,11 @@ public class DefaultDistributedLogstreamService
     logstreamFile = new File(directory, "logstream");
     try {
       logstreamFile.createNewFile();
-      bufferedWriter = Files.newWriter(logstreamFile, Charset.defaultCharset());
+
+      RandomAccessFile raf = new RandomAccessFile(logstreamFile, "rw");
+      fileChannel = raf.getChannel();
+
+      //      bufferedWriter = Files.newWriter(logstreamFile, Charset.defaultCharset());
     } catch (IOException e) {
       LOG.error("Error on creating new writer", e);
       e.printStackTrace();
@@ -54,37 +58,46 @@ public class DefaultDistributedLogstreamService
 
   @Override
   public void append(byte[] bytes) {
-    LOG.info("#append(byte[]): current index {}", this.getCurrentIndex());
+    LOG.info("#append(byte[]): current index {} position {}", this.getCurrentIndex(), position);
     LOG.debug("Append given bytes.");
+
     try {
-      bufferedWriter.write(Arrays.toString(bytes), 0, bytes.length);
-      position += bytes.length;
-      bufferedWriter.flush();
+      final long newPosition = appendToLogstream(bytes);
+
+      // to append in log stream impl
+      Session<DistributedLogstreamClient> currentSession = getCurrentSession();
+      currentSession.accept(
+          distributedLogstreamClient -> distributedLogstreamClient.appended(newPosition));
     } catch (IOException e) {
-      LOG.error("Error on write", e);
+      LOG.error("Error on append", e);
       e.printStackTrace();
     }
-    // to append in log stream impl
-    Session<DistributedLogstreamClient> currentSession = getCurrentSession();
-    currentSession.accept(
-        distributedLogstreamClient -> distributedLogstreamClient.appended(position));
+  }
+
+  private long appendToLogstream(byte[] bytes) throws IOException {
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+    fileChannel.write(byteBuffer, position);
+    //    bufferedWriter.write(Arrays.toString(bytes), 0, bytes.length);
+    position += bytes.length;
+    //    bufferedWriter.flush();
+    return position;
   }
 
   @Override
   public void backup(BackupOutput backupOutput) {
     LOG.info("#backup(BackupOutput): current index {}", this.getCurrentIndex());
-    LOG.debug("Do an backup of the current position {}.", position);
-    backupOutput.writeInt(position);
+    LOG.info("Do an backup of the current position {}.", position);
+    backupOutput.writeLong(position);
     backupOutput.writeObject("FINDME");
   }
 
   @Override
   public void restore(BackupInput backupInput) {
     LOG.info("#restore(BackupInput): current index {}", this.getCurrentIndex());
-    LOG.debug("Restore an backup of an previous state.");
-    position = backupInput.readInt();
+    LOG.info("Restore an backup of an previous state.");
+    position = backupInput.readLong();
     backupInput.readObject();
-    LOG.debug("Restored position: {}", position);
+    LOG.info("Restored position: {}", position);
 
     // position could consist of [file id (int32) | file offset (int32)]
     // if we have an offset larger then zero we need to copy the content and rewrite it so we

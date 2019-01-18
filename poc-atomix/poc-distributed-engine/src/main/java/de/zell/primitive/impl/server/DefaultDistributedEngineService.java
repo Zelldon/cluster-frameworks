@@ -2,20 +2,18 @@ package de.zell.primitive.impl.server;
 
 import static de.zell.Broker.ROOT_DIR;
 
+import de.zell.primitive.DistributedEngineType;
 import de.zell.primitive.api.client.DistributedEngineClient;
 import de.zell.primitive.api.server.DistributedEngineService;
-import de.zell.primitive.DistributedEngineType;
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-
 import io.atomix.primitive.service.AbstractPrimitiveService;
 import io.atomix.primitive.service.BackupInput;
 import io.atomix.primitive.service.BackupOutput;
 import io.atomix.primitive.service.ServiceExecutor;
 import io.atomix.primitive.session.Session;
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,31 +62,24 @@ public class DefaultDistributedEngineService
   }
 
   @Override
-  public void append(byte[] bytes) {
-    LOG.info("#append(byte[]): current index {} position {}", this.getCurrentIndex(), position);
-    LOG.debug("Append given bytes.");
+  public void newWorkflowInstance(String workflowId) {
+    LOG.info("#newWorkflowInstance({}): current index {}.", workflowId, this.getCurrentIndex());
 
-    try {
-      final long newPosition = appendToEngine(bytes);
-
-      // to append in log stream impl
-      Session<DistributedEngineClient> currentSession = getCurrentSession();
-      //      currentSession.publish(PrimitiveEvent.event(EventType.from(""), bytes));
+    final Session<DistributedEngineClient> currentSession = getCurrentSession();
+    if (workflowId.contains("fail")) {
       currentSession.accept(
-          distributedEngineClient -> distributedEngineClient.appended(newPosition));
-    } catch (IOException e) {
-      LOG.error("Error on append", e);
-      e.printStackTrace();
+          distributedEngineClient -> {
+            final String reason =
+                String.format(
+                    "Expected to find workflow with id %s, but does not exist.", workflowId);
+            distributedEngineClient.rejectWorkflowInstanceCreation(reason);
+          });
+    } else {
+      currentSession.accept(
+          distributedEngineClient -> {
+            distributedEngineClient.createdWorkflowInstance(getCurrentIndex());
+          });
     }
-  }
-
-  private long appendToEngine(byte[] bytes) throws IOException {
-    final ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-    fileChannel.write(byteBuffer, position);
-    //    bufferedWriter.write(Arrays.toString(bytes), 0, bytes.length);
-    position += bytes.length;
-    //    bufferedWriter.flush();
-    return position;
   }
 
   @Override

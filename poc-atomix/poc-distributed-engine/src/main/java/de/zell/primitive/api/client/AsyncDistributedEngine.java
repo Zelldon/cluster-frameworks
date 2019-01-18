@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import io.atomix.primitive.AsyncPrimitive;
 
 public interface AsyncDistributedEngine extends AsyncPrimitive {
-  CompletableFuture<Long> append(byte[] bytes);
+  CompletableFuture<Long> newWorkflowInstance(String workflowId);
 
   @Override
   DistributedEngine sync();

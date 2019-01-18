@@ -32,7 +32,7 @@ public class DistributedEngineProxy
   }
 
   @Override
-  public CompletableFuture<Long> append(byte[] bytes) {
+  public CompletableFuture<Long> newWorkflowInstance(String workflowId) {
 
     PrimitiveState state = getProxyClient().getPartition(name()).getState();
     if (state != PrimitiveState.CONNECTED) {
@@ -45,7 +45,7 @@ public class DistributedEngineProxy
     // TODO need to copy given bytes
 
     getProxyClient()
-        .acceptBy(name(), service -> service.append(bytes))
+        .acceptBy(name(), service -> service.newWorkflowInstance(workflowId))
         .whenComplete(
             (result, error) -> {
               if (error != null) {
@@ -69,21 +69,18 @@ public class DistributedEngineProxy
   }
 
   @Override
-  public void appended(long position) {
+  public void createdWorkflowInstance(long position) {
     CompletableFuture<Long> appendFuture = this.appendFuture;
     if (appendFuture != null) {
       LOG.info("Bytes were appended at position {}.", position);
       appendFuture.complete(position);
     }
   }
-  //
-  //    @Override
-  //    public void failed() {
-  //      CompletableFuture<Optional<Long>> appendFuture = this.appendFuture;
-  //      if (appendFuture != null) {
-  //        appendFuture.complete(Optional.empty());
-  //      }
-  //    }
+
+  @Override
+  public void rejectWorkflowInstanceCreation(String reason) {
+    LOG.error("Workflow instance creation was rejection, reason {}.", reason);
+  }
 
   @Override
   public CompletableFuture<AsyncDistributedEngine> connect() {

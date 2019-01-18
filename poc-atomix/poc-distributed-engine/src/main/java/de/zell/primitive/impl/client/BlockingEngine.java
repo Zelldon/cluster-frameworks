@@ -21,12 +21,12 @@ public class BlockingEngine extends Synchronous<AsyncDistributedEngine>
   }
 
   @Override
-  public long append(byte[] bytes) {
+  public long newWorkflowInstance(String workflowId) {
 
     // blocking
     long position = -1;
     try {
-      position = distributedEngineProxy.append(bytes).get(timeout, TimeUnit.MILLISECONDS);
+      position = distributedEngineProxy.newWorkflowInstance(workflowId).get(timeout, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       e.printStackTrace();
     } catch (ExecutionException e) {

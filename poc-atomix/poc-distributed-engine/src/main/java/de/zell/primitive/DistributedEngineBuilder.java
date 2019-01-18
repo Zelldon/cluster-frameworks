@@ -1,5 +1,6 @@
-package de.zell.engine;
+package de.zell.primitive;
 
+import de.zell.primitive.api.client.DistributedEngine;
 import io.atomix.primitive.PrimitiveBuilder;
 import io.atomix.primitive.PrimitiveManagementService;
 import io.atomix.primitive.protocol.ProxyCompatibleBuilder;

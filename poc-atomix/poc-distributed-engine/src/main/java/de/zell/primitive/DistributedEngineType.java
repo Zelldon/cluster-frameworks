@@ -1,5 +1,8 @@
-package de.zell.engine;
+package de.zell.primitive;
 
+import de.zell.primitive.api.client.DistributedEngine;
+import de.zell.primitive.impl.server.DefaultDistributedEngineService;
+import de.zell.primitive.impl.client.DistributedEngineProxyBuilder;
 import io.atomix.primitive.PrimitiveManagementService;
 import io.atomix.primitive.PrimitiveType;
 import io.atomix.primitive.service.PrimitiveService;

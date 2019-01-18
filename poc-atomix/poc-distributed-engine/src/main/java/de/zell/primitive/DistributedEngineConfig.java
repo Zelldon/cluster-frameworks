@@ -1,4 +1,4 @@
-package de.zell.engine;
+package de.zell.primitive;
 
 import io.atomix.primitive.PrimitiveType;
 import io.atomix.primitive.config.PrimitiveConfig;

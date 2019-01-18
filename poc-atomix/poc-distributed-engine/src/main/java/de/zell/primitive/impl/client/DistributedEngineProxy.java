@@ -1,5 +1,9 @@
-package de.zell.engine;
+package de.zell.primitive.impl.client;
 
+import de.zell.primitive.api.client.AsyncDistributedEngine;
+import de.zell.primitive.api.client.DistributedEngine;
+import de.zell.primitive.api.client.DistributedEngineClient;
+import de.zell.primitive.api.server.DistributedEngineService;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 

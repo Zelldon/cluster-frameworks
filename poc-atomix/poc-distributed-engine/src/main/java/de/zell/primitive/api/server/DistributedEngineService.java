@@ -1,4 +1,4 @@
-package de.zell.engine;
+package de.zell.primitive.api.server;
 
 import io.atomix.primitive.operation.Command;
 

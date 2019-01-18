@@ -1,5 +1,7 @@
-package de.zell.engine;
+package de.zell.primitive.impl.client;
 
+import de.zell.primitive.api.client.AsyncDistributedEngine;
+import de.zell.primitive.api.client.DistributedEngine;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;

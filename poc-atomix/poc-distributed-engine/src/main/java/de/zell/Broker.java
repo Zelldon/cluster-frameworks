@@ -7,10 +7,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import de.zell.engine.DistributedEngine;
-import de.zell.engine.DistributedEngineBuilder;
-import de.zell.engine.DistributedEngineConfig;
-import de.zell.engine.DistributedEngineType;
+import de.zell.primitive.api.client.DistributedEngine;
+import de.zell.primitive.DistributedEngineBuilder;
+import de.zell.primitive.DistributedEngineConfig;
+import de.zell.primitive.DistributedEngineType;
 import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
 import io.atomix.primitive.log.LogSession;

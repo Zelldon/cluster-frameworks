@@ -1,5 +1,7 @@
 package de.zell;
 
+import io.atomix.core.map.DistributedMap;
+import io.atomix.core.map.DistributedMapBuilder;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -28,31 +30,13 @@ public class Primitive extends Thread {
 
   static {
     ROOT_DIR.mkdir();
-
-    final Field freeDiskBuffer;
-    try {
-      freeDiskBuffer = RaftCompactionConfig.class.getDeclaredField("DEFAULT_FREE_DISK_BUFFER");
-      freeDiskBuffer.setAccessible(true);
-
-      Field modifiersField = Field.class.getDeclaredField("modifiers");
-      modifiersField.setAccessible(true);
-      modifiersField.setInt(freeDiskBuffer, freeDiskBuffer.getModifiers() & ~Modifier.FINAL);
-
-      freeDiskBuffer.set(null, 0.43);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
   }
-
-  public static final String CREATE_COMMAND = "CREATE";
-  public static final String CREATED_EVENT = "CREATED";
 
   private final String memberId;
   private final int port;
   private final List<String> allMemberList;
   private final File memberFolder;
-  private LogSession logSession;
-  private final Set<String> members;
+ private final Set<String> members;
 
   public Primitive(
       final File rootFolder, final String memberId, int port, final List<String> memberList) {
@@ -119,7 +103,6 @@ public class Primitive extends Thread {
     node.start().join();
     LOG.info("Member {} started.", memberId);
 
-    if (memberId.equalsIgnoreCase("member1")) {
       final MultiRaftProtocol multiRaftProtocol =
           MultiRaftProtocol.builder(partitionGroupName)
               .withReadConsistency(ReadConsistency.LINEARIZABLE)
@@ -132,7 +115,6 @@ public class Primitive extends Thread {
           .withProtocol(multiRaftProtocol)
           .build();
 
-      LOG.info("Logstream primitive build.");
-    }
+    LOG.info("Logstream primitive build.");
   }
 }

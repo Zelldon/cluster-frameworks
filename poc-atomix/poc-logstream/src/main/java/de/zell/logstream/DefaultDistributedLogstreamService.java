@@ -2,9 +2,14 @@ package de.zell.logstream;
 
 import static de.zell.Primitive.ROOT_DIR;
 
+import io.atomix.primitive.service.impl.DefaultServiceExecutor;
+import io.atomix.protocols.raft.impl.RaftContext;
+import io.atomix.protocols.raft.service.RaftServiceContext;
+import io.netty.util.concurrent.DefaultEventExecutor;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -37,6 +42,21 @@ public class DefaultDistributedLogstreamService
   protected void configure(ServiceExecutor executor) {
     super.configure(executor);
 
+    try {
+      final Field context = DefaultServiceExecutor.class.getDeclaredField("context");
+      context.setAccessible(true);
+      final RaftServiceContext raftServiceContext = (RaftServiceContext) context.get(executor);
+      final Field raft = RaftServiceContext.class.getDeclaredField("raft");
+      raft.setAccessible(true);
+      RaftContext raftContext = (RaftContext) raft.get(raftServiceContext);
+      LOG.error("configure {}", raftContext.getName());
+      raft.setAccessible(false);
+      context.setAccessible(false);
+    } catch (NoSuchFieldException e) {
+      e.printStackTrace();
+    } catch (IllegalAccessException e) {
+      e.printStackTrace();
+    }
     final String nodeId = this.getLocalMemberId().id();
     LOG.info("Current session member id {}", nodeId);
     final String serviceName = this.getServiceName();

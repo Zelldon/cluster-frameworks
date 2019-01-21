@@ -6,6 +6,8 @@ import de.zell.logstream.DistributedLogstreamConfig;
 import de.zell.logstream.DistributedLogstreamType;
 import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
+import io.atomix.core.map.DistributedMap;
+import io.atomix.core.map.DistributedMapBuilder;
 import io.atomix.protocols.raft.MultiRaftProtocol;
 import io.atomix.protocols.raft.ReadConsistency;
 import io.atomix.utils.net.Address;

@@ -9,4 +9,13 @@ public interface DistributedEngineClient {
 
   @Event
   void rejectWorkflowInstanceCreation(String reason);
+
+  @Event
+  void rejectActivityExecution(String reason);
+
+  @Event
+  void startEventExecuted(long workflowId);
+
+  @Event
+  void endEventExecuted(long workflowId);
 }

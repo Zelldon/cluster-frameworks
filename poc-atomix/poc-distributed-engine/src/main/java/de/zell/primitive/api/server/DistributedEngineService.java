@@ -6,5 +6,9 @@ public interface DistributedEngineService {
   @Command
   void newWorkflowInstance(String workflowId);
 
+  @Command
+  void executeStartEvent(long workflowId);
 
+  @Command
+  void executeEndEvent(long workflowId);
 }

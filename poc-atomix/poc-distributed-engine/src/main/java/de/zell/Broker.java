@@ -7,10 +7,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import de.zell.primitive.api.client.DistributedEngine;
 import de.zell.primitive.DistributedEngineBuilder;
 import de.zell.primitive.DistributedEngineConfig;
 import de.zell.primitive.DistributedEngineType;
+import de.zell.primitive.api.client.DistributedEngine;
 import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
 import io.atomix.primitive.log.LogSession;
@@ -97,8 +97,8 @@ public class Broker extends Thread {
 
     final RaftPartitionGroup raftPartitionGroup =
         RaftPartitionGroup.builder(partitionGroupName)
-            .withNumPartitions(3)
-            .withPartitionSize(3)
+            .withNumPartitions(1)
+            .withPartitionSize(1)
             .withMembers(allMemberList)
             .withDataDirectory(partitionGroupFolder)
             .withFlushOnCommit()
@@ -119,20 +119,18 @@ public class Broker extends Thread {
     node.start().join();
     LOG.info("Member {} started.", memberId);
 
-    if (memberId.equalsIgnoreCase("member1")) {
-      final MultiRaftProtocol multiRaftProtocol =
-          MultiRaftProtocol.builder(partitionGroupName)
-              .withReadConsistency(ReadConsistency.LINEARIZABLE)
-              .build();
+    final MultiRaftProtocol multiRaftProtocol =
+        MultiRaftProtocol.builder(partitionGroupName)
+            .withReadConsistency(ReadConsistency.LINEARIZABLE)
+            .build();
 
-      LOG.info("Build Engine primitive.");
-      // build custom primitive
-      node.<DistributedEngineBuilder, DistributedEngineConfig, DistributedEngine>primitiveBuilder(
-              "Engine", DistributedEngineType.instance())
-          .withProtocol(multiRaftProtocol)
-          .build();
+    LOG.info("Build Engine primitive.");
+    // build custom primitive
+    node.<DistributedEngineBuilder, DistributedEngineConfig, DistributedEngine>primitiveBuilder(
+            "Engine", DistributedEngineType.instance())
+        .withProtocol(multiRaftProtocol)
+        .build();
 
-      LOG.info("Engine primitive build.");
-    }
+    LOG.info("Engine primitive build.");
   }
 }

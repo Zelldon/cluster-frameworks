@@ -1,12 +1,12 @@
 package de.zell.primitive.impl.client;
 
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+
 import de.zell.primitive.api.client.AsyncDistributedEngine;
 import de.zell.primitive.api.client.DistributedEngine;
 import de.zell.primitive.api.client.DistributedEngineClient;
 import de.zell.primitive.api.server.DistributedEngineService;
-import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
-
 import io.atomix.primitive.AbstractAsyncPrimitive;
 import io.atomix.primitive.PrimitiveRegistry;
 import io.atomix.primitive.PrimitiveState;
@@ -24,7 +24,8 @@ public class DistributedEngineProxy
 
   public static final long DEFAULT_TIMEOUT = 15_000L;
 
-  private volatile CompletableFuture<Long> appendFuture;
+  private volatile CompletableFuture<Long> newWfInstanceFuture;
+  private CompletableFuture<Long> activityExecutedFuture;
 
   public DistributedEngineProxy(
       ProxyClient<DistributedEngineService> proxy, PrimitiveRegistry registry) {
@@ -40,22 +41,20 @@ public class DistributedEngineProxy
       return CompletableFuture.completedFuture(-1L);
     }
 
-    appendFuture = new CompletableFuture<>();
-    LOG.debug("Get proxy and try to append bytes.");
-    // TODO need to copy given bytes
+    newWfInstanceFuture = new CompletableFuture<>();
 
     getProxyClient()
         .acceptBy(name(), service -> service.newWorkflowInstance(workflowId))
         .whenComplete(
             (result, error) -> {
               if (error != null) {
-                appendFuture.completeExceptionally(error);
-                LOG.error("Append completed with an error.", error);
-              } else {
-                LOG.debug("Append was successful.");
+                newWfInstanceFuture.completeExceptionally(error);
               }
             });
-    return appendFuture.thenApply(result -> result).whenComplete((r, e) -> appendFuture = null);
+
+    return newWfInstanceFuture
+        .thenApply(result -> result)
+        .whenComplete((r, e) -> newWfInstanceFuture = null);
   }
 
   @Override
@@ -70,16 +69,58 @@ public class DistributedEngineProxy
 
   @Override
   public void createdWorkflowInstance(long position) {
-    CompletableFuture<Long> appendFuture = this.appendFuture;
-    if (appendFuture != null) {
-      LOG.info("Bytes were appended at position {}.", position);
-      appendFuture.complete(position);
-    }
+
+    // workflow instance created
+    completeFuture(newWfInstanceFuture, position, "Workflow instance was created at {}.");
+
+    final long workflowId = position;
+
+    // next step -> start event
+    activityExecutedFuture = new CompletableFuture<>();
+    getProxyClient()
+        .acceptBy(name(), service -> service.executeStartEvent(workflowId))
+        .whenComplete(
+            (result, error) -> {
+              if (error != null) {
+                activityExecutedFuture.completeExceptionally(error);
+              }
+            });
   }
 
   @Override
   public void rejectWorkflowInstanceCreation(String reason) {
+    newWfInstanceFuture.completeExceptionally(new RuntimeException(reason));
     LOG.error("Workflow instance creation was rejection, reason {}.", reason);
+  }
+
+  @Override
+  public void startEventExecuted(long workflowId) {
+    completeFuture(
+        activityExecutedFuture, workflowId, "Start event of workflow instance ({}) was executed.");
+
+    // find next steps/activities
+    // -> end event
+    activityExecutedFuture = new CompletableFuture<>();
+    getProxyClient()
+        .acceptBy(name(), service -> service.executeEndEvent(workflowId))
+        .whenComplete(
+            (result, error) -> {
+              if (error != null) {
+                activityExecutedFuture.completeExceptionally(error);
+              }
+            });
+  }
+
+  @Override
+  public void endEventExecuted(long workflowId) {
+    completeFuture(
+        activityExecutedFuture, workflowId, "End event of workflow instance ({}) was executed.");
+  }
+
+  @Override
+  public void rejectActivityExecution(String reason) {
+    LOG.error("Execution of activity was rejected, because {}", reason);
+    activityExecutedFuture.completeExceptionally(new RuntimeException(reason));
   }
 
   @Override
@@ -90,5 +131,12 @@ public class DistributedEngineProxy
                 Futures.allOf(
                     this.getProxyClient().getPartitions().stream().map(ProxySession::connect)))
         .thenApply(v -> this);
+  }
+
+  private void completeFuture(CompletableFuture<Long> future, long position, String logMsg) {
+    if (future != null) {
+      LOG.info(logMsg, position);
+      future.complete(position);
+    }
   }
 }

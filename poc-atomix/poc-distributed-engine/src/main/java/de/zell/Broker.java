@@ -13,7 +13,6 @@ import de.zell.primitive.DistributedEngineType;
 import de.zell.primitive.api.client.DistributedEngine;
 import io.atomix.core.Atomix;
 import io.atomix.core.AtomixBuilder;
-import io.atomix.primitive.log.LogSession;
 import io.atomix.protocols.raft.MultiRaftProtocol;
 import io.atomix.protocols.raft.ReadConsistency;
 import io.atomix.protocols.raft.partition.RaftCompactionConfig;
@@ -44,14 +43,10 @@ public class Broker extends Thread {
     }
   }
 
-  public static final String CREATE_COMMAND = "CREATE";
-  public static final String CREATED_EVENT = "CREATED";
-
   private final String memberId;
   private final int port;
   private final List<String> allMemberList;
   private final File memberFolder;
-  private LogSession logSession;
   private final Set<String> members;
 
   public Broker(
@@ -97,8 +92,8 @@ public class Broker extends Thread {
 
     final RaftPartitionGroup raftPartitionGroup =
         RaftPartitionGroup.builder(partitionGroupName)
-            .withNumPartitions(1)
-            .withPartitionSize(1)
+            .withNumPartitions(allMemberList.size())
+            .withPartitionSize(allMemberList.size())
             .withMembers(allMemberList)
             .withDataDirectory(partitionGroupFolder)
             .withFlushOnCommit()

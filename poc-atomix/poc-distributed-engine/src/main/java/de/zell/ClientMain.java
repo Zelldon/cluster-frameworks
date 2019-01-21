@@ -34,6 +34,6 @@ public class ClientMain {
             .withProtocol(multiRaftProtocol)
             .build();
 
-    distributedEngine.async().newWorkflowInstance("fail");
+    distributedEngine.async().newWorkflowInstance("foobar");
   }
 }

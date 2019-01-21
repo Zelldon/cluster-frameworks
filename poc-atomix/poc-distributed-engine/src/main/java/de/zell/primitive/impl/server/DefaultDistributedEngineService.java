@@ -48,9 +48,12 @@ public class DefaultDistributedEngineService
             final String reason =
                 String.format(
                     "Expected to find workflow with id %s, but does not exist.", workflowId);
+
+            LOG.error(reason);
             distributedEngineClient.rejectWorkflowInstanceCreation(reason);
           } else {
             final long workflowInstanceId = getCurrentIndex();
+            LOG.info("Workflow instance {} created.", workflowInstanceId);
             workflowInstances.add(workflowInstanceId);
             distributedEngineClient.createdWorkflowInstance(workflowInstanceId);
           }
@@ -67,6 +70,7 @@ public class DefaultDistributedEngineService
     currentSession.accept(
         distributedEngineClient -> {
           if (workflowInstances.contains(workflowInstanceId)) {
+            LOG.info("Start event for workflow instance {} executed.", workflowInstanceId);
             distributedEngineClient.startEventExecuted(workflowInstanceId);
           } else {
             rejectActivityExecution(workflowInstanceId, distributedEngineClient);
@@ -83,6 +87,7 @@ public class DefaultDistributedEngineService
     currentSession.accept(
         distributedEngineClient -> {
           if (workflowInstances.contains(workflowInstanceId)) {
+            LOG.info("End event for workflow instance {} executed.", workflowInstanceId);
             distributedEngineClient.endEventExecuted(workflowInstanceId);
           } else {
             rejectActivityExecution(workflowInstanceId, distributedEngineClient);
@@ -96,6 +101,7 @@ public class DefaultDistributedEngineService
         String.format(
             "Expected to find workflow instance with id %d, but does not exist.",
             workflowInstanceId);
+    LOG.error(reason);
     distributedEngineClient.rejectActivityExecution(reason);
   }
 

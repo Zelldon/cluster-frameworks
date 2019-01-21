@@ -41,6 +41,17 @@ public class DistributedEngineProxy
       return CompletableFuture.completedFuture(-1L);
     }
 
+    getProxyClient()
+        .addStateChangeListener(
+            (s) -> {
+              if (PrimitiveState.EXPIRED == s
+                  || PrimitiveState.CLOSED == s
+                  || PrimitiveState.SUSPENDED == s) {
+                LOG.error("try Reconnect");
+                connect();
+              }
+            });
+
     newWfInstanceFuture = new CompletableFuture<>();
 
     getProxyClient()

@@ -2,22 +2,20 @@ package de.zell.logstream;
 
 import static de.zell.Primitive.ROOT_DIR;
 
+import io.atomix.primitive.service.AbstractPrimitiveService;
+import io.atomix.primitive.service.BackupInput;
+import io.atomix.primitive.service.BackupOutput;
+import io.atomix.primitive.service.ServiceExecutor;
 import io.atomix.primitive.service.impl.DefaultServiceExecutor;
+import io.atomix.primitive.session.Session;
 import io.atomix.protocols.raft.impl.RaftContext;
 import io.atomix.protocols.raft.service.RaftServiceContext;
-import io.netty.util.concurrent.DefaultEventExecutor;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-
-import io.atomix.primitive.service.AbstractPrimitiveService;
-import io.atomix.primitive.service.BackupInput;
-import io.atomix.primitive.service.BackupOutput;
-import io.atomix.primitive.service.ServiceExecutor;
-import io.atomix.primitive.session.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +40,7 @@ public class DefaultDistributedLogstreamService
   protected void configure(ServiceExecutor executor) {
     super.configure(executor);
 
+    String name = "logstream";
     try {
       final Field context = DefaultServiceExecutor.class.getDeclaredField("context");
       context.setAccessible(true);
@@ -49,7 +48,8 @@ public class DefaultDistributedLogstreamService
       final Field raft = RaftServiceContext.class.getDeclaredField("raft");
       raft.setAccessible(true);
       RaftContext raftContext = (RaftContext) raft.get(raftServiceContext);
-      LOG.error("configure {}", raftContext.getName());
+      name = raftContext.getName();
+      LOG.error("configure {}", name);
       raft.setAccessible(false);
       context.setAccessible(false);
     } catch (NoSuchFieldException e) {
@@ -67,8 +67,7 @@ public class DefaultDistributedLogstreamService
     final File directory = new File(ROOT_DIR, nodeId);
     directory.mkdirs();
 
-    final String fileName = new StringBuilder(serviceName).append("-").append(serviceId).toString();
-    logstreamFile = new File(directory, fileName);
+    logstreamFile = new File(directory, name);
     try {
       logstreamFile.createNewFile();
 

@@ -15,9 +15,17 @@ import io.atomix.protocols.raft.ReadConsistency;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.utils.net.Address;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +42,8 @@ public class Primitive extends Thread {
   private final List<String> allMemberList;
   private final File memberFolder;
   private final Set<String> members;
+
+  private Map<String, AtomicBoolean> leaderForPartition = new HashMap<>();
 
   public Primitive(
       final File rootFolder, final String memberId, int port, final List<String> memberList) {
@@ -133,6 +143,8 @@ public class Primitive extends Thread {
                       .append("-")
                       .append(partition.id().id())
                       .toString();
+              leaderForPartition.put(partitionString, new AtomicBoolean(false));
+
               final LeaderElection<String> election =
                   node.<String>leaderElectionBuilder(partitionString)
                       .withProtocol(multiRaftOnSystem)
@@ -147,6 +159,10 @@ public class Primitive extends Thread {
 
   private void onLeadershipEvent(LeadershipEvent<String> leadershipEvent) {
     final Leader<String> newLeader = leadershipEvent.newLeadership().leader();
+    if (newLeader == null) {
+      return;
+    }
+
     final Leadership<String> oldLeadership = leadershipEvent.oldLeadership();
     final Leader<String> oldLeader = oldLeadership.leader();
 
@@ -159,10 +175,55 @@ public class Primitive extends Thread {
     }
 
     final String leaderId = newLeader.id();
+    final String topic = leadershipEvent.topic();
+    final AtomicBoolean leaderForPartition = this.leaderForPartition.get(topic);
     if (leaderId.equalsIgnoreCase(memberId)) {
-      LOG.error("I'm {} and take the lead for partition {}", memberId, leadershipEvent.topic());
+      LOG.error("I'm {} and take the lead for partition {}", memberId, topic);
+      if (leaderForPartition.compareAndSet(false, true)) {
+        startLogReader(topic);
+      }
     } else {
-      LOG.info("I'm {} and will simply follow partition {}", memberId, leadershipEvent.topic());
+      leaderForPartition.set(false);
+      LOG.info("I'm {} and will simply follow partition {}", memberId, topic);
     }
+  }
+
+  private void startLogReader(String topic) {
+    final File directory = new File(ROOT_DIR, memberId);
+    final File logstreamFile = new File(directory, topic);
+    final AtomicBoolean leaderForPartition = this.leaderForPartition.get(topic);
+
+    final Thread thread =
+        new Thread(
+            () -> {
+              LOG.info(
+                  "Member {} starts reading from log file {}", memberId, logstreamFile.getName());
+              try {
+                final RandomAccessFile raf = new RandomAccessFile(logstreamFile, "r");
+                final FileChannel fileChannel = raf.getChannel();
+                final int capacity = 1024;
+                final ByteBuffer readBuffer = ByteBuffer.allocate(capacity);
+
+                while (leaderForPartition.get()) {
+                  while (fileChannel.position() != fileChannel.size()) {
+                    int read = fileChannel.read(readBuffer);
+                    LOG.info("Read bytes {}", readBuffer.toString());
+                    readBuffer.clear();
+                  }
+                  Thread.sleep(1_000L);
+                }
+
+                fileChannel.close();
+                raf.close();
+              } catch (FileNotFoundException e) {
+                e.printStackTrace();
+              } catch (IOException e) {
+                e.printStackTrace();
+                LOG.error("Error on reading from file {}", logstreamFile, e);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            });
+    thread.start();
   }
 }

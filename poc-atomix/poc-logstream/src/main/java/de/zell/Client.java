@@ -52,7 +52,7 @@ public class Client extends Thread {
 
     LOG.info("Logstream primitive build.");
 
-    final int entries = 2;
+    final int entries = 1;
     final int entryLength = 1024;
     for (int i = 0; i < entries; i++) {
       final StringBuilder entryBuilder = new StringBuilder("entry-").append(i);

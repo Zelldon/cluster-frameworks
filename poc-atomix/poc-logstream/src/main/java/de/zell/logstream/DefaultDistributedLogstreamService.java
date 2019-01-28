@@ -94,7 +94,8 @@ public class DefaultDistributedLogstreamService
 
     if (db == null) {
       try {
-        initDatabase(partitionDir);
+        rocksDbDir = new File(partitionDir, "rocksDb");
+        initDatabase();
       } catch (Exception e) {
         LOG.error("Error on opening rocks db", e);
         throw e;
@@ -102,8 +103,7 @@ public class DefaultDistributedLogstreamService
     }
   }
 
-  private void initDatabase(File partitionDir) {
-    rocksDbDir = new File(partitionDir, "rocksDb");
+  private void initDatabase() {
     db = ZeebeRocksDbFactory.newFactory(DefaultColumnFamily.class).createDb(rocksDbDir);
     key = new DbString();
     key.wrapString("position");
@@ -144,7 +144,7 @@ public class DefaultDistributedLogstreamService
   @Override
   public void backup(BackupOutput backupOutput) {
     LOG.info("#backup(BackupOutput): current index {}", this.getCurrentIndex());
-    LOG.info("Do an backup of the current position {}.", position);
+    LOG.info("Do an backup of the current position {}.", position.getValue());
 
     final File snapshotDir = new File(rocksDbDir, "snapshot");
     db.createSnapshot(snapshotDir);
@@ -209,6 +209,8 @@ public class DefaultDistributedLogstreamService
         e.printStackTrace();
       }
     }
+
+    initDatabase();
 
     final DbLong dbLong = positionColumnFamily.get(key);
     LOG.info("Restored position: {}", dbLong.getValue());

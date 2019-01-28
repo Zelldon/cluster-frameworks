@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Primitive extends Thread {
+
   private static final Logger LOG = LoggerFactory.getLogger(Primitive.class);
   public static final File ROOT_DIR = new File("atomix");
 
@@ -192,7 +193,8 @@ public class Primitive extends Thread {
 
   private void startLogReader(String topic) {
     final File directory = new File(ROOT_DIR, memberId);
-    final File logstreamFile = new File(directory, topic);
+    final File partitionDir = new File(directory, topic);
+    final File logstreamFile = new File(partitionDir, "logstream");
     final AtomicBoolean leaderForPartition = this.leaderForPartition.get(topic);
 
     final Thread thread =
@@ -210,8 +212,8 @@ public class Primitive extends Thread {
                   while (fileChannel.position() != fileChannel.size()) {
                     fileChannel.read(readBuffer);
                     LOG.info("Read bytes {}", readBuffer.toString());
-
-                    logstream.append(readBuffer.array());
+                    // to append on own logstream
+                    //                    logstream.append(readBuffer.array());
                     readBuffer.clear();
                   }
                   Thread.sleep(2_000L);

@@ -114,7 +114,10 @@ public class DefaultDistributedLogstreamService
 
   @Override
   public void append(byte[] bytes) {
-    LOG.info("#append(byte[]): current index {} position {}", this.getCurrentIndex(), position);
+    LOG.info(
+        "#append(byte[]): current index {} position {}",
+        this.getCurrentIndex(),
+        position.getValue());
     LOG.debug("Append given bytes.");
 
     try {

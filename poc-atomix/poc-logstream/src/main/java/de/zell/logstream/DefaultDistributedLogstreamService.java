@@ -196,6 +196,22 @@ public class DefaultDistributedLogstreamService
       LOG.error("Error on closing database.", e);
       e.printStackTrace();
     }
+
+    try {
+      Files.list(rocksDbDir.toPath())
+          .forEach(
+              f -> {
+                try {
+                  Files.delete(f);
+                } catch (IOException e) {
+                  LOG.error("Error on deleting file.", e);
+                  e.printStackTrace();
+                }
+              });
+    } catch (Exception e) {
+      LOG.error("Error on listing all files.", e);
+    }
+
     while (backupInput.hasRemaining()) {
       final String fileName = backupInput.readString();
       final File snapshottedFile = new File(rocksDbDir, fileName);

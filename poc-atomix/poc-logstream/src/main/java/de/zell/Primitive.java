@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Primitive extends Thread {
+
   private static final Logger LOG = LoggerFactory.getLogger(Primitive.class);
   public static final File ROOT_DIR = new File("atomix");
 
@@ -44,6 +45,7 @@ public class Primitive extends Thread {
   private final Set<String> members;
 
   private Map<String, AtomicBoolean> leaderForPartition = new HashMap<>();
+  private DistributedLogstream logstream;
 
   public Primitive(
       final File rootFolder, final String memberId, int port, final List<String> memberList) {
@@ -117,10 +119,11 @@ public class Primitive extends Thread {
 
     LOG.info("Build logstream primitive.");
     // build custom primitive
-    node.<DistributedLogstreamBuilder, DistributedLogstreamConfig, DistributedLogstream>
-            primitiveBuilder("logstream", DistributedLogstreamType.instance())
-        .withProtocol(multiRaftProtocol)
-        .build();
+    logstream =
+        node.<DistributedLogstreamBuilder, DistributedLogstreamConfig, DistributedLogstream>
+                primitiveBuilder("logstream", DistributedLogstreamType.instance())
+            .withProtocol(multiRaftProtocol)
+            .build();
 
     LOG.info("Logstream primitive build.");
 
@@ -190,7 +193,8 @@ public class Primitive extends Thread {
 
   private void startLogReader(String topic) {
     final File directory = new File(ROOT_DIR, memberId);
-    final File logstreamFile = new File(directory, topic);
+    final File partitionDir = new File(directory, topic);
+    final File logstreamFile = new File(partitionDir, "logstream");
     final AtomicBoolean leaderForPartition = this.leaderForPartition.get(topic);
 
     final Thread thread =
@@ -206,11 +210,13 @@ public class Primitive extends Thread {
 
                 while (leaderForPartition.get()) {
                   while (fileChannel.position() != fileChannel.size()) {
-                    int read = fileChannel.read(readBuffer);
+                    fileChannel.read(readBuffer);
                     LOG.info("Read bytes {}", readBuffer.toString());
+                    // to append on own logstream
+                    //                    logstream.append(readBuffer.array());
                     readBuffer.clear();
                   }
-                  Thread.sleep(1_000L);
+                  Thread.sleep(2_000L);
                 }
 
                 fileChannel.close();

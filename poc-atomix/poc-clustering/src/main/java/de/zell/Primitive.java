@@ -1,6 +1,7 @@
 package de.zell;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import io.atomix.protocols.raft.MultiRaftProtocol;
 import io.atomix.protocols.raft.ReadConsistency;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.utils.net.Address;
+import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,15 +23,13 @@ public class Primitive extends Thread {
 
   public static final File ROOT_DIR = new File("/home/zell/atomix");
 
-  public static final String CREATE_COMMAND = "CREATE";
-  public static final String CREATED_EVENT = "CREATED";
-
   private final String memberId;
   private final int port;
   private final List<String> allMemberList;
   private final File memberFolder;
-  private LogSession logSession;
   private final Set<String> members;
+
+  boolean putValues = false;
 
   public Primitive(
       final File rootFolder, final String memberId, int port, final List<String> memberList) {
@@ -64,6 +64,7 @@ public class Primitive extends Thread {
             .withMembers(allMemberList)
             .withDataDirectory(systemGroupFolder)
             .withFlushOnCommit()
+            .withElectionTimeout(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 250)))
             .build();
 
     /// PARTITION GROUP
@@ -74,11 +75,12 @@ public class Primitive extends Thread {
 
     final RaftPartitionGroup raftPartitionGroup =
         RaftPartitionGroup.builder("raft")
-            .withNumPartitions(3)
+            .withNumPartitions(8)
             .withPartitionSize(3)
             .withMembers(allMemberList)
             .withDataDirectory(logGroupFolder)
             .withFlushOnCommit()
+            .withElectionTimeout(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 250)))
             .build();
 
     /// SETUP
@@ -95,15 +97,23 @@ public class Primitive extends Thread {
 
     node.start().join();
     LOG.info("Member {} started.", memberId);
+    LOG.info("Part of {}", node.getPartitionService().getPartitionGroup("raft").getPartitionIds().toArray());
 
     final MultiRaftProtocol multiRaftProtocol =
         MultiRaftProtocol.builder().withReadConsistency(ReadConsistency.LINEARIZABLE).build();
 
-    final Map<String, String> map =
-        node.<String, String>mapBuilder("my-map").withProtocol(multiRaftProtocol).build();
+    final Map<String, Integer> map =
+        node.<String, Integer>mapBuilder("my-map").withProtocol(multiRaftProtocol).build();
 
-    LOG.warn("{}", map.put("foo", "bar"));
-    LOG.warn("{}", map.put("foo", "FINDME"));
-    LOG.warn("{}", map.put("foo", "ROFL"));
+    int count = 0;
+    while (putValues)
+    {
+      try {
+        LOG.warn("{}", map.put("foo" + (count % 32), count++));
+        Thread.sleep(500L);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
   }
 }
